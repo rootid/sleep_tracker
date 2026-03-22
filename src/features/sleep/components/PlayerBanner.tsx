@@ -2,14 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Flame, Star } from 'lucide-react';
 import type { UserStats } from '../../../types';
-import { calculateXpRequiredForLevel } from '../../gamification/utils/engine';
 
 interface PlayerBannerProps {
   stats: UserStats;
 }
 
 export const PlayerBanner: React.FC<PlayerBannerProps> = ({ stats }) => {
-  const xpNeeded = calculateXpRequiredForLevel(stats.level);
+  const xpNeeded = stats.xpToNextLevel;
   const progressPercent = Math.min(100, Math.max(0, (stats.currentXp / xpNeeded) * 100));
 
   return (

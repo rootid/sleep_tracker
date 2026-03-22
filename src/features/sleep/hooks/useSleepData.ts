@@ -1,12 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { SleepEntry, UserStats } from '../../../types';
-import { calculateDurationMinutes, calculateSleepScore } from '../utils/calculations';
-import { calculateEarnedXp, evaluateLevelUp, evaluateBadges } from '../../gamification/utils/engine';
-
-const STORAGE_KEYS = {
-  ENTRIES: 'sleep_tracker_entries',
-  STATS: 'sleep_tracker_stats'
-};
 
 const DEFAULT_STATS: UserStats = {
   level: 1,
@@ -22,83 +15,65 @@ export const useSleepData = () => {
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from local storage on mount
+  // Fetch from API on mount
   useEffect(() => {
-    const storedEntries = localStorage.getItem(STORAGE_KEYS.ENTRIES);
-    const storedStats = localStorage.getItem(STORAGE_KEYS.STATS);
-
-    if (storedEntries) {
-      setEntries(JSON.parse(storedEntries));
-    }
-    
-    if (storedStats) {
-      setStats(JSON.parse(storedStats));
-    }
-
-    setIsLoaded(true);
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/data');
+        if (response.ok) {
+          const data = await response.json();
+          setEntries(data.entries);
+          setStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Failed to fetch sleep data:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Save to local storage whenever data changes
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
-      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(stats));
-    }
-  }, [entries, stats, isLoaded]);
-
-  const addEntry = (date: string, sleepTime: string, wakeTime: string) => {
+  const addEntry = async (date: string, sleepTime: string, wakeTime: string) => {
     try {
-      const durationMinutes = calculateDurationMinutes(sleepTime, wakeTime);
-      const sleepScore = calculateSleepScore(durationMinutes);
+      const response = await fetch('/api/entries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ date, sleepTime, wakeTime })
+      });
 
-      const newEntry: SleepEntry = {
-        id: crypto.randomUUID(),
-        date,
-        sleepTime,
-        wakeTime,
-        durationMinutes,
-        sleepScore
-      };
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to add entry');
+      }
 
-      const newEntries = [newEntry, ...entries];
+      const result = await response.json();
       
-      // Update Stats
-      const earnedXp = calculateEarnedXp(newEntry, stats.currentStreak);
-      const { newLevel, remainderXp } = evaluateLevelUp(stats.currentXp + earnedXp, stats.level);
-      
-      const newUnlockedBadges = evaluateBadges(newEntries, stats);
-      
-      const newStreak = stats.currentStreak + 1; // Assuming we logged today correctly (simplified)
+      // We need to re-fetch the entire state to ensure we are perfectly in sync with the backend
+      const dataResponse = await fetch('/api/data');
+      if (dataResponse.ok) {
+        const fullData = await dataResponse.json();
+        setEntries(fullData.entries);
+        setStats(fullData.stats);
+      }
 
-      const newStats: UserStats = {
-        ...stats,
-        level: newLevel,
-        currentXp: remainderXp,
-        currentStreak: newStreak,
-        longestStreak: Math.max(stats.longestStreak, newStreak),
-        unlockedBadges: [...stats.unlockedBadges, ...newUnlockedBadges]
-      };
-
-      setEntries(newEntries);
-      setStats(newStats);
-
-      return {
-        entry: newEntry,
-        earnedXp,
-        leveledUp: newLevel > stats.level,
-        newBadges: newUnlockedBadges
-      };
+      return result;
     } catch (error) {
       console.error('Failed to add sleep entry:', error);
       throw error;
     }
   };
 
-  const clearData = () => {
-    setEntries([]);
-    setStats(DEFAULT_STATS);
-    localStorage.removeItem(STORAGE_KEYS.ENTRIES);
-    localStorage.removeItem(STORAGE_KEYS.STATS);
+  const clearData = async () => {
+    try {
+      await fetch('/api/reset', { method: 'POST' });
+      setEntries([]);
+      setStats(DEFAULT_STATS);
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+    }
   };
 
   return {
