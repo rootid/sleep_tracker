@@ -4,7 +4,7 @@ import { SleepEntryForm } from './features/sleep/components/SleepEntryForm';
 import { TrendChart } from './features/sleep/components/TrendChart';
 import { ConsistencyHeatmap } from './features/sleep/components/ConsistencyHeatmap';
 import { useSleepData } from './features/sleep/hooks/useSleepData';
-import { formatDuration } from './features/sleep/utils/calculations';
+import { formatDuration } from './lib/utils';
 import confetti from 'canvas-confetti';
 import { Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,21 +15,25 @@ function App() {
 
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50">Loading...</div>;
 
-  const handleAddEntry = (date: string, sleepTime: string, wakeTime: string) => {
-    const result = addEntry(date, sleepTime, wakeTime);
-    
-    // Trigger celebrations
-    if (result.leveledUp) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#6366f1', '#a855f7', '#fbbf24']
-      });
-    }
+  const handleAddEntry = async (date: string, sleepTime: string, wakeTime: string) => {
+    try {
+      const result = await addEntry(date, sleepTime, wakeTime);
+      
+      // Trigger celebrations
+      if (result.leveledUp) {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#6366f1', '#a855f7', '#fbbf24']
+        });
+      }
 
-    setShowReward({ score: result.entry.sleepScore, xp: result.earnedXp });
-    setTimeout(() => setShowReward(null), 3000);
+      setShowReward({ score: result.entry.sleepScore, xp: result.earnedXp });
+      setTimeout(() => setShowReward(null), 3000);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const latestEntry = entries[0];

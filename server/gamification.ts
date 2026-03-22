@@ -1,5 +1,5 @@
 import { differenceInDays, parseISO } from 'date-fns';
-import type { SleepEntry, UserStats } from '../../../types';
+import type { SleepEntry, UserStats } from '../src/types';
 
 export const XP_CONSTANTS = {
   LOG_NIGHT: 10,

@@ -5,8 +5,8 @@ import {
   XP_CONSTANTS, 
   LEVEL_CONSTANTS,
   evaluateBadges
-} from './engine';
-import type { SleepEntry, UserStats } from '../../../types';
+} from './gamification';
+import type { SleepEntry, UserStats } from '../src/types';
 
 const mockPerfectEntry: SleepEntry = {
   id: '1',
